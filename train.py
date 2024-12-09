@@ -128,8 +128,8 @@ if __name__ == "__main__":
     elif args.dataset=='eegfmri_translation':
         from data.dataloader_translation import  NumpyBatchDataset as NumpyDataset 
      
-    args.ele_dir = '/home/aa2793/gibbs/arman/datasets/NEUROSCIENCE/MEGfMRI/forrest_gump/30_second_dataset/meg-200parcell-avg/'
-    args.hemo_dir = '/home/aa2793/gibbs/arman/datasets/NEUROSCIENCE/MEGfMRI/forrest_gump/30_second_dataset/fmri-500parcell-avg/'
+    args.ele_dir = 'MEGfMRI/forrest_gump/30_second_dataset/meg-200parcell-avg/'
+    args.hemo_dir = 'MEGfMRI/forrest_gump/30_second_dataset/fmri-500parcell-avg/'
      
     train_dataloader = NumpyDataset(
         meg_dir = args.ele_dir,  
