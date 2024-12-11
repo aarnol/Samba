@@ -1,7 +1,4 @@
 # Latent Representation Learning for Multimodal Brain Activity Translation
-
-
-# About
 This repository contains the PyTorch implementation of the Spatiotemporal Alignment of Multimodal Brain Activity (SAMBA) framework, as described in our paper titled "Latent Representation Learning for Multimodal Brain Activity Translation." SAMBA is designed to bridge the spatial and temporal resolution gaps across neuroimaging modalities by learning a unified latent space. This approach introduces novel methods such as attention-based wavelet decomposition, graph attention networks, and recurrent layers for processing brain signals.
 
 
