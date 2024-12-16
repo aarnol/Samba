@@ -47,7 +47,7 @@ def training(args, model, train_dataloader, valid_dataloader):
             model.print_results(iteration)   
             meg2List(args.output_dir + '/xmodel/results.txt', model.result_list)  
             model.to(args.device) 
-        if iteration == 1500: break
+        if iteration == 1500: break     # founded by validation set
  
 ## validation 
 def validation(args, model, valid_dataloader, iteration): 
@@ -90,11 +90,9 @@ if __name__ == "__main__":
     args = params_fn(server_mode='mccleary', dataset='eegfmri_translation') 
     args.model = 'SambaEleToHemo'   
     args.single_subj = True  
-    
-    # if args.single_subj:
-    sub_ele = args.ele_sub_list[0]
-    sub_hemo = args.hemo_sub_list[0]
      
+    sub_ele = args.ele_sub_list[-1]
+    sub_hemo = args.hemo_sub_list[-1] 
     if args.single_subj:
         args.ele_sub_list = [sub_ele]
         args.hemo_sub_list = [sub_hemo]
@@ -128,7 +126,7 @@ if __name__ == "__main__":
     test_dataloader = NumpyDataset(
         meg_dir = args.ele_dir,  
         fmri_dir = args.hemo_dir,  
-        split = 'test',
+        split = 'test',              # this should be set to 'valid' we use test here for demo
         n_way = args.n_way,
         fmri_sub_list=args.hemo_sub_list, 
         meg_sub_list=args.ele_sub_list, 
