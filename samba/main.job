@@ -1,0 +1,15 @@
+#!/bin/bash
+#SBATCH --job-name=samba
+#SBATCH -p gpu --gpus=1
+#SBATCH -c 8 -n 1 --mem=200G
+#SBATCH --time=48:00:00
+
+#SBATCH --output=../outputs/logs/slurm/%x_%j.out 
+
+module load miniconda
+conda activate pytorch_brain
+python main.py
+
+
+
+#SBATCH --error=../outputs/logs/slurm/%x_%j.err
