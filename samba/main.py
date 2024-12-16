@@ -93,7 +93,7 @@ if __name__ == "__main__":
     
     # if args.single_subj:
     sub_ele = args.ele_sub_list[0]
-    sub_hemo = args.hemo_sub_list[-1]
+    sub_hemo = args.hemo_sub_list[0]
      
     if args.single_subj:
         args.ele_sub_list = [sub_ele]
