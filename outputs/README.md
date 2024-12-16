@@ -1,1 +1,1 @@
-## Results are stored in this folder
+## Results are stored in this folder.
