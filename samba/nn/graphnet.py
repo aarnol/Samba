@@ -7,44 +7,7 @@ from einops import rearrange
 from labml_helpers.module import Module
 # from nn.jointrecurrent import Encoder, Decoder
 
-
-# class Decoder(nn.Module):
-    
-#   def __init__(self, seq_len, embedding_dim, n_features, dropout):
-#     super(Decoder, self).__init__()
-
-#     self.seq_len, self.embedding_dim = seq_len, embedding_dim
-#     self.n_features =  n_features
-#     self.dropout = dropout
-
-#     self.rnn = nn.LSTM(
-#       input_size=self.n_features,
-#       hidden_size=self.embedding_dim,
-#       num_layers=2,
-#       dropout = self.dropout,
-#       batch_first=True
-#     ) 
-#     # outputting multivariate time series 
-#     self.output_layer1 = nn.Linear(self.embedding_dim, 100)  # dense output layer; 
-#     self.output_layer2 = nn.Linear(100, self.n_features)  # dense output layer; 
-#     self.relu = nn.ReLU()
-
-#   def forward(self, x, h_0, c_0):
-#     size = len(x) 
-#     x, (hidden_n, cell_n) = self.rnn(x, (h_0, c_0))
-#     x = x.reshape((size, 1, self.embedding_dim))
-    
-#     x = self.relu(self.output_layer1(x))
-#     x = F.dropout(x, p=self.dropout, training=True) 
-    
-#     x = self.output_layer2(x)
-#     x = F.dropout(x, p=self.dropout, training=True) 
-    
-#     x = x.reshape((size, 1, self.n_features))
-
-#     return (x, hidden_n, cell_n)
-
-
+ 
 class MLP(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super(MLP, self).__init__() 
@@ -69,9 +32,9 @@ class GraphAttentionV2Layer(Module):
         self.is_concat = is_concat
         self.n_heads = n_heads
         self.share_weights = share_weights 
-        if is_concat:                                                      # True
+        if is_concat:                                                     
             assert out_features % n_heads == 0 
-            self.n_hidden = out_features // n_heads                        # self.n_hidden = 128
+            self.n_hidden = out_features // n_heads                       
         else: 
             self.n_hidden = out_features 
         self.linear_l = nn.Linear(in_features, self.n_hidden * n_heads, bias=False)  
@@ -125,8 +88,7 @@ class GMWA(nn.Module):
         self.device = device
         self.n_patches = 20 
         
-        self.drop = nn.Dropout(p=dropout) if dropout > 0.0 else nn.Identity()
-        
+        self.drop = nn.Dropout(p=dropout) if dropout > 0.0 else nn.Identity() 
         self.gat_layer1 = GraphAttentionV2Layer(
             in_features=in_features, 
             out_features=out_features, 
@@ -149,8 +111,7 @@ class GMWA(nn.Module):
         
         dropout=0.5
         device=device  
-         
-        # dec_seq_len=30
+          
         dec_embedding_dim=500
         dec_features=500  
         
@@ -160,12 +121,7 @@ class GMWA(nn.Module):
         for _ in range(self.n_patches):
             self.mapper.append(nn.Linear(n_super_source_nodes, n_super_target_nodes).to(device)
         )  
-        self.activation = nn.ELU()  
-        
-        # num_layers = 2
-        # hidden_dim = dec_features
-        # self.h0 = nn.Parameter(torch.zeros(num_layers, 1, hidden_dim))
-        # self.c0 = nn.Parameter(torch.zeros(num_layers, 1, hidden_dim)) 
+        self.activation = nn.ELU()   
         
         
     def g_upsampling(self, z): 
