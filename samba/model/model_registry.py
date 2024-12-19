@@ -1,9 +1,10 @@
  
 from model.samba_ele_to_hemo import SambaEleToHemo 
+from model.samba_hemo_to_ele import SambaHemoToEle 
 
 # List of model classes
 MODEL_LIST = [
-    SambaEleToHemo,   
+    SambaEleToHemo, SambaHemoToEle,    
 ]
 
 # Create a dictionary with both original and lowercase model names as keys
