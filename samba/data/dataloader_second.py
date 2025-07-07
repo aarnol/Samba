@@ -154,4 +154,101 @@ class NumpyBatchDataset(Dataset):
     
     
 
- 
+import os
+import torch
+import numpy as np
+from torch.utils.data import Dataset
+from torch.autograd import Variable
+from einops import rearrange
+import nilearn
+def load_fmri_data(fmri_folder):
+    '''Load fMRI data from a specified folder. All files are nii.gz format.'''
+    fmri_data = []
+    for file in os.listdir(fmri_folder):
+        if file.endswith('.nii.gz'):
+            try:
+                # Load the fMRI image using nilearn
+                img = nilearn.image.load_img(os.path.join(fmri_folder, file)).get_fdata()
+
+            except Exception as e:
+                print(f"Error loading {file}: {e}")
+                continue
+            subject_id = file[:6]  # Assuming subject ID is the first 6 characters of the filename
+            encoding = file[6] # Assuming encoding is the 7th character of the filename
+            condition = file[7]
+            label = file[8]
+            ex = {
+                "pheno": {
+                    "subjectId": subject_id,
+                    "encoding": encoding,
+                    "condition": condition,
+                    "label": label
+                },
+                "img": img
+            }
+            fmri_data.append(ex)
+    if not fmri_data:
+        raise ValueError(f"No fMRI data found in folder: {fmri_folder}", flush=True)
+    print(len(fmri_data), "fMRI data loaded from", fmri_folder, flush = True)
+    return fmri_data
+
+class NumpyBatchDatasetHCP(Dataset):
+    def __init__(self, fnirs_file, fmri_folder, split, n_way, fnirs_sub_list, fmri_sub_list, single_subj=False):
+        self.fnirs_data = torch.load(fnirs_file, weights_only=False)  # list of dicts
+        self.fmri_data = load_fmri_data(fmri_folder)   # list of dicts
+        self.n_way = n_way
+        self.label = Variable(torch.tensor([x for x in range(self.n_way)]))
+        self.split = split
+        self.single_subj = single_subj #doesnt do anything lol
+
+        self.fnirs_subs = fnirs_sub_list
+        self.fmri_subs = fmri_sub_list
+
+        # Define subject splits (if needed)
+        self.test_splits = ['002', '004', '057', '088', '089', '039']
+        self.valid_splits = ['184', '149', '100']
+        self.train_splits = list(filter(lambda s: s not in self.test_splits, [f'{i:03}' for i in range(1, 201)]))
+
+    def normalize_tensor(self, input_tensor, desired_mean=0.0, desired_std=1.0):
+        current_mean = input_tensor.mean()
+        current_std = input_tensor.std()
+        normalized = (input_tensor - current_mean) / current_std
+        return normalized * desired_std + desired_mean
+
+    def get_data_by_subject(self, data_list, subject_id):
+        
+        return [entry for entry in data_list if entry["pheno"]["subjectId"] == subject_id]
+
+    def __getitem__(self, idx):
+        x_fnirs, x_fmri, y_batch, y_meta, time_points, sub_f_list, sub_n_list = [], [], [], [], [], [], []
+
+        for w in range(self.n_way):
+            fnirs_sub = np.random.choice(self.fnirs_subs)
+            fmri_sub = np.random.choice(self.fmri_subs)
+            print(f"Processing subject {fnirs_sub} for fNIRS and {fmri_sub} for fMRI", flush=True)
+            fnirs_entries = self.get_data_by_subject(self.fnirs_data, fnirs_sub)
+            fmri_entries = self.get_data_by_subject(self.fmri_data, fmri_sub)
+
+            # Randomly pick one timepoint
+            rand_idx = np.random.randint(min(len(fnirs_entries), len(fmri_entries)))
+            fnirs_ts = torch.tensor(fnirs_entries[rand_idx]['roiTimeseries']).float()
+            fmri_ts = torch.tensor(fmri_entries[rand_idx]['img']).float()
+
+            fnirs_ts = self.normalize_tensor(fnirs_ts)
+            fmri_ts = self.normalize_tensor(fmri_ts)
+
+            x_fnirs.append(fnirs_ts)
+            x_fmri.append(fmri_ts)
+            y_batch.append(rand_idx)
+            y_meta.append(self.label)
+            time_points.append(str(rand_idx))
+            sub_f_list.append(fmri_sub)
+            sub_n_list.append(fnirs_sub)
+
+        x_fnirs = torch.stack(x_fnirs).squeeze()
+        x_fmri = torch.stack(x_fmri).squeeze()
+
+        return (x_fnirs, x_fmri, y_meta, y_batch), [time_points, sub_f_list, sub_n_list]
+
+    def __len__(self):
+        return 1

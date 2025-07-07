@@ -178,6 +178,7 @@ def params_fn(server_mode='misha', dataset='eegfmri_translation'):
     # Initialize argument parser
     parser = ArgumentParser(description="Setup parameters for neuroscience data processing")
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print("device:", device)
 
     # Setup arguments
     parser.add_argument("--model", default="", type=str)
@@ -237,33 +238,49 @@ def params_fn(server_mode='misha', dataset='eegfmri_translation'):
     parser.add_argument("--scale_deviation", default=0.1, type=float)      
 
 
-    parser.add_argument("--wavelet_dims", default=[204, 106, 57, 57])  
+    parser.add_argument("--wavelet_dims", default=[93, 18])  
     parser.add_argument("--second_translation", default=True)   
     
     # Parse arguments
     params = parser.parse_args()
 
-    parcels200_name, parcels500_name, vertex_200_labels, vertex_500_labels = parcel_extractor()
-    
-    params.parcels500_name = parcels500_name
-    params.parcels200_name = parcels200_name
-    
-    params.vertex_200_labels = vertex_200_labels
-    params.vertex_500_labels = vertex_500_labels
-    
+    # Everything below here may require downloaded data
+    try:
+        parcels200_name, parcels500_name, vertex_200_labels, vertex_500_labels = parcel_extractor()
+        params.parcels500_name = parcels500_name
+        params.parcels200_name = parcels200_name
+        params.vertex_200_labels = vertex_200_labels
+        params.vertex_500_labels = vertex_500_labels
+    except Exception as e:
+        print(f"Warning: Could not load parcel data: {e}")
+        params.parcels500_name = None
+        params.parcels200_name = None
+        params.vertex_200_labels = None
+        params.vertex_500_labels = None
+
     params.lh_rh_lob_names = ['Default', 'Lang.', 'Cont', 'SalVenAttn', 'DorsAttn', 'Aud', 'SomMot', 'Visual']
 
     # Get subject lists
-    ele_sub_list, hemo_sub_list = subject_lists(dataset)
-    params.ele_sub_list = ele_sub_list
-    params.hemo_sub_list = hemo_sub_list
- 
-    params.hemo_adjacency_matrix_dir = '../dataset/graphs_eegfmri/fmri_'+str(params.n_hemo_parcels)+'_parcels/'
-    if params.dataset=='megfmri':   
-        params.ele_adjacency_matrix_dir = '../dataset/graphs_eegfmri/meg_'+str(params.n_ele_parcels)+'_parcels/'   
-    elif params.dataset=='eegfmri_translation':   
-        params.ele_adjacency_matrix_dir = '../dataset/graphs_eegfmri/eeg_'+str(params.n_ele_parcels)+'_parcels/'
- 
+    try:
+        ele_sub_list, hemo_sub_list = subject_lists(dataset)
+        params.ele_sub_list = ele_sub_list
+        params.hemo_sub_list = hemo_sub_list
+    except Exception as e:
+        print(f"Warning: Could not load subject lists: {e}")
+        params.ele_sub_list = None
+        params.hemo_sub_list = None
+
+    try:
+        params.hemo_adjacency_matrix_dir = '../dataset/graphs_eegfmri/fmri_'+str(params.n_hemo_parcels)+'_parcels/'
+        if params.dataset=='megfmri':   
+            params.ele_adjacency_matrix_dir = '../dataset/graphs_eegfmri/meg_'+str(params.n_ele_parcels)+'_parcels/'   
+        elif params.dataset=='eegfmri_translation':   
+            params.ele_adjacency_matrix_dir = '../dataset/graphs_eegfmri/eeg_'+str(params.n_ele_parcels)+'_parcels/'
+    except Exception as e:
+        print(f"Warning: Could not set adjacency matrix directories: {e}")
+        params.hemo_adjacency_matrix_dir = None
+        params.ele_adjacency_matrix_dir = None
+
     return params
 
 

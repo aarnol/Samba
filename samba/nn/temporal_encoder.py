@@ -250,10 +250,8 @@ class WaveletAttentionNet(nn.Module):
         dims = args.wavelet_dims 
         self.rdn = np.random.RandomState(14)
         self.attention_embedding = ThreeLayerMLP(sum(dims[:]), 128, sum(dims[:])).to(device)
-        self.wavelet_attentions = nn.Parameter(
-            torch.FloatTensor(self.rdn.standard_normal((1, sum(dims[:])))), 
-            requires_grad=True
-        )    
+        self.wavelet_attentions = None  # delay init
+  
 
     def forward(self, x_meg_hrf):
         """
@@ -272,14 +270,23 @@ class WaveletAttentionNet(nn.Module):
         n_parcels = x_meg_hrf.shape[1]
         
         # Wavelet transform and individual band processing 
-        x_meg_hrf = rearrange(x_meg_hrf[:,:,:-1], 'b p (m t) -> (b p) m t', m=15)     # m samples per fmri 
+        x_meg_hrf = rearrange(x_meg_hrf[:,:,:-1], 'b p (m t) -> (b p) m t', m=1)     # m samples per fmri 
         x_wavelet_decomposition = []
         for s in range(x_meg_hrf.shape[1]):  
             xl, xh_list = self.dwt(x_meg_hrf[:, s, :].unsqueeze(1))   
             xh = torch.cat(xh_list, dim=-1)                           
             x_wavelet_decomposition.append(torch.cat((xh, xl), dim=-1))
-            
-        x_wavelet_decomposition = torch.cat(x_wavelet_decomposition, dim=1)    
+        print("xh.shape:", xh.shape)
+        print("xl.shape:", xl.shape)
+  
+        x_wavelet_decomposition = torch.cat(x_wavelet_decomposition, dim=1)   
+        if self.wavelet_attentions is None:
+            attention_dim = x_wavelet_decomposition.shape[-1]
+            self.wavelet_attentions = nn.Parameter(
+                torch.randn(1, attention_dim).to(x_wavelet_decomposition.device),
+                requires_grad=True
+            )
+            self.attention_embedding = self.attention_embedding.to(x_wavelet_decomposition.device) 
         wavelet_attentions = self.attention_embedding(self.wavelet_attentions)
         wavelet_attentions = wavelet_attentions.expand(x_wavelet_decomposition.shape[0], x_wavelet_decomposition.shape[1], -1) 
         

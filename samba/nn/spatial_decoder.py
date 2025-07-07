@@ -358,6 +358,7 @@ class GMWANet(nn.Module):
             torch.float32: The reconstructed hemodynamic predictions.
             torch.float32: Attention values for visualization purposes.
         """ 
+        print(x.shape, y.shape, batch_size, sub_hemo, sub_ele, teacher_forcing_ratio)
         x = rearrange(x, '(b p) m d -> b p (m d)', p=200) 
 
         n_t = x.shape[0] 

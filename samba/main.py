@@ -16,7 +16,12 @@ def training(args, model, train_dataloader, valid_dataloader):
     best_valoss = np.inf
     
     for iteration, ((xm, xf, y_meta, y_batch), [t, sub_f, sub_m]) in enumerate(train_dataloader):  
-    
+        
+        #move tensors to device
+        xm = xm.to(args.device)
+        xf = xf.to(args.device)
+        
+
         model.train()   
         loss = model.loss(xm, xf, sub_m, sub_f, iteration)   
         
@@ -85,8 +90,10 @@ def validation(args, model, valid_dataloader, iteration):
 
     return valoss_i
   
-if __name__ == "__main__":   
-    
+if __name__ == "__main__":  
+    import os, time
+    print(f"[{time.strftime('%H:%M:%S')}] Script running with PID: {os.getpid()}", flush=True) 
+    print("SambaEleToHemo main.py", flush = True)
     args = params_fn(server_mode='mccleary', dataset='eegfmri_translation') 
     args.model = 'SambaEleToHemo'   
     args.single_subj = True  
@@ -100,44 +107,59 @@ if __name__ == "__main__":
     else:
         args.save_prefix = 'allSubs'
          
-    if args.dataset=='megfmri':
-        from data.dataloader_30_second import  NumpyBatchDataset as NumpyDataset 
-    elif args.dataset=='eegfmri_translation': 
-        from data.dataloader_second import  NumpyBatchDataset as NumpyDataset 
- 
-    eeg_folder = 'eeg-200parcell-avg' 
-    fmri_folder = 'fmri-500parcell-avg' 
-    eeg_data_path = '../dataset/naturalistic_view_eeg_fmri_seconds/'+eeg_folder+'/'
-    fmri_data_path = '../dataset/naturalistic_view_eeg_fmri_seconds/'+fmri_folder+'/'
-
-    args.ele_dir = eeg_data_path
-    args.hemo_dir = fmri_data_path 
     
+
+    from data.dataloader_second import  NumpyBatchDatasetHCP as NumpyDataset 
+    
+    import importlib
+    import data.dataloader_second as d
+    importlib.reload(d)  # force reload of the module
+
+
+    cwd = os.getcwd()
+    fmri_data_path = os.path.join(cwd, 'samba', 'data', 'fmri')
+    fnirs_data_path = os.path.join(cwd, 'samba', 'data', 'fnirs', 'fnirsHbC.save')  # Assuming fnirsHbC.save is the correct file name
+    if not os.path.exists(fmri_data_path):
+        raise FileNotFoundError(f"Directory not found: {fmri_data_path}. Please check the path.")
+    if not os.path.exists(fnirs_data_path):
+        raise FileNotFoundError(f"File not found: {fnirs_data_path}. Please check the path and file name.")
+    
+    args.ele_dir = fnirs_data_path
+    args.hemo_dir = fmri_data_path 
+    fnirs_subs = torch.load(fnirs_data_path, weights_only=False)
+    fnirs_subs = [x['pheno']['subjectId'] for x in fnirs_subs]
+    fmri_subs = os.listdir(fmri_data_path)
+    fmri_subs = [x[:6] for x in fmri_subs]
+     
     train_dataloader = NumpyDataset(
-        meg_dir = args.ele_dir,  
-        fmri_dir =  args.hemo_dir,  
-        split = 'train',
-        n_way = args.n_way,
-        fmri_sub_list=args.hemo_sub_list, 
-        meg_sub_list=args.ele_sub_list, 
+        fnirs_file=args.ele_dir,
+        fmri_folder=args.hemo_dir,
+        split='train',
+        n_way=args.n_way,
+        fmri_sub_list=fmri_subs,
+        fnirs_sub_list=fnirs_subs,
         single_subj=args.single_subj
-    )       
-      
+    )
+
     test_dataloader = NumpyDataset(
-        meg_dir = args.ele_dir,  
-        fmri_dir = args.hemo_dir,  
-        split = 'test',              # this should be set to 'valid' we use test here for demo
-        n_way = args.n_way,
-        fmri_sub_list=args.hemo_sub_list, 
-        meg_sub_list=args.ele_sub_list, 
-        single_subj=args.single_subj 
-    )     
+        fnirs_file=args.ele_dir,
+        fmri_folder=args.hemo_dir,
+        split='test',  # this should be set to 'valid' we use test here for demo
+        n_way=args.n_way,
+        fmri_sub_list=fmri_subs,
+        fnirs_sub_list=fnirs_subs,
+        single_subj=args.single_subj
+    )
+      
+     
     
     # build model   
     proto_model = str2model(args.model) 
     model = proto_model(args).to(args.device)  
     args.output_key = time.strftime(args.model+"--"+args.save_prefix+"--%Y%m%d-%H%M%S--" + args.dataset) 
     print_gpu_info(args)  
+    #print the number of parameters
+    print(f"Number of parameters in the model: {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
     
     training(
         args, 
